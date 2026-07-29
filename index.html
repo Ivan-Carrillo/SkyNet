@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TACA & Avianca — Red de Rutas Aéreas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080b14;
+    --panel:#111827;
+    --panel-2:#161f34;
+    --line:#26314a;
+    --line-soft:#1c2438;
+    --text:#e8edf5;
+    --text-dim:#8493b0;
+    --text-faint:#4e5b78;
+    --cyan:#4fd1e8;
+    --amber:#f5a742;
+    --red:#e8636b;
+    --green:#5fd98a;
+    --taca-color:#f5a742;
+    --avianca-color:#e8636b;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% -10%, #12203a 0%, transparent 45%),
+      radial-gradient(circle at 100% 10%, #1a1430 0%, transparent 40%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1280px; margin:0 auto;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap:wrap; gap:16px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:20px; margin-bottom:22px;
+  }
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.18em;
+    color:var(--cyan); text-transform:uppercase; margin-bottom:8px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::before{content:''; width:7px; height:7px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  h1{font-family:var(--font-display); font-weight:700; font-size:clamp(24px,3.2vw,36px); letter-spacing:-0.01em;}
+  .sub{color:var(--text-dim); font-size:13.5px; margin-top:6px; max-width:560px; line-height:1.5;}
+
+  /* ---------- Airline switcher ---------- */
+  .airline-switch{display:flex; gap:8px; align-items:center;}
+  .airline-btn{
+    font-family:var(--font-display); font-weight:700; font-size:14px;
+    padding:11px 20px; border-radius:10px; cursor:pointer; border:1.5px solid var(--line);
+    background:var(--panel-2); color:var(--text-dim); transition:all .15s;
+    display:flex; align-items:center; gap:8px;
+  }
+  .airline-btn .dot{width:8px; height:8px; border-radius:50%; background:var(--text-faint);}
+  .airline-btn.active[data-airline="taca"]{border-color:var(--taca-color); color:var(--taca-color); background:rgba(245,167,66,.08);}
+  .airline-btn.active[data-airline="taca"] .dot{background:var(--taca-color); box-shadow:0 0 6px var(--taca-color);}
+  .airline-btn.active[data-airline="avianca"]{border-color:var(--avianca-color); color:var(--avianca-color); background:rgba(232,99,107,.08);}
+  .airline-btn.active[data-airline="avianca"] .dot{background:var(--avianca-color); box-shadow:0 0 6px var(--avianca-color);}
+
+  .stat-strip{display:flex; gap:20px; font-family:var(--font-mono); margin-top:10px;}
+  .stat{text-align:right;}
+  .stat .n{font-size:20px; font-weight:700; color:var(--cyan);}
+  .stat .l{font-size:9.5px; color:var(--text-faint); letter-spacing:.1em; text-transform:uppercase;}
+
+  .grid{display:grid; grid-template-columns:420px 1fr; gap:20px;}
+  @media (max-width:960px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:linear-gradient(180deg, var(--panel) 0%, #0d1320 100%);
+    border:1px solid var(--line); border-radius:14px;
+    padding:18px 18px 20px;
+  }
+  .panel + .panel{margin-top:20px;}
+  .panel h2{
+    font-family:var(--font-display); font-size:14px; font-weight:600;
+    letter-spacing:.02em; margin-bottom:14px; display:flex; align-items:center; gap:8px; justify-content:space-between;
+  }
+  .panel h2 .tag{
+    font-family:var(--font-mono); font-size:9.5px; color:var(--text-faint);
+    border:1px solid var(--line); padding:2px 6px; border-radius:20px; letter-spacing:.05em;
+    font-weight:400;
+  }
+  .panel h2 .left{display:flex; align-items:center; gap:8px;}
+
+  #radar{width:100%; aspect-ratio:1/1; display:block;}
+  .radar-ring{fill:none; stroke:var(--line-soft); stroke-width:1;}
+  .edge{stroke:var(--text-faint); stroke-width:1; fill:none; opacity:.4; marker-end:url(#arrow);}
+  .edge.active{stroke:var(--amber); stroke-width:2.2; opacity:1; marker-end:url(#arrow-amber); filter:drop-shadow(0 0 4px rgba(245,167,66,.7));}
+  .node-dot{stroke:var(--bg); stroke-width:1.5; cursor:pointer;}
+  .node-dot.base{fill:var(--cyan);}
+  .node-dot.active{fill:var(--amber);}
+  .node-label{font-family:var(--font-mono); font-size:9px; fill:var(--text-dim); pointer-events:none;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:11px; color:var(--text-dim); margin-bottom:6px; letter-spacing:.02em;}
+  input, select{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:9px 10px; border-radius:8px; font-family:var(--font-body); font-size:13.5px;
+    outline:none; transition:border-color .15s;
+  }
+  input:focus, select:focus{border-color:var(--cyan);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 90px; gap:10px; align-items:end;}
+  button{
+    font-family:var(--font-body); font-weight:600; font-size:13px;
+    border:none; border-radius:8px; padding:10px 14px; cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  button:active{transform:scale(.98);}
+  .btn-cyan{background:var(--cyan); color:#04121a;}
+  .btn-amber{background:var(--amber); color:#1c1204;}
+  button:hover{filter:brightness(1.08);}
+  .btn-full{width:100%;}
+
+  .msg{
+    font-family:var(--font-mono); font-size:11.5px; padding:9px 10px; border-radius:8px;
+    margin-top:10px; border:1px solid transparent; display:none; line-height:1.5;
+  }
+  .msg.show{display:block;}
+  .msg.ok{background:rgba(95,217,138,.08); border-color:rgba(95,217,138,.3); color:var(--green);}
+  .msg.err{background:rgba(232,99,107,.08); border-color:rgba(232,99,107,.3); color:var(--red);}
+
+  .active-list{max-height:220px; overflow-y:auto; padding-right:4px;}
+  .active-list::-webkit-scrollbar{width:6px;}
+  .active-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+  .city-row{
+    display:flex; align-items:center; gap:10px; padding:7px 4px; font-size:13px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .city-row .idx{font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); width:22px;}
+  .empty-hint{color:var(--text-faint); font-size:12.5px; font-style:italic; padding:10px 2px;}
+
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:12.5px; color:var(--text-dim);}
+  .checkbox-row input{width:auto;}
+
+  .matrix-wrap{overflow:auto; border:1px solid var(--line); border-radius:10px; max-height:520px;}
+  table{border-collapse:collapse; width:100%; font-family:var(--font-mono); font-size:11.5px;}
+  th, td{padding:6px 9px; text-align:center; white-space:nowrap;}
+  thead th{background:var(--panel-2); color:var(--cyan); font-weight:600; border-bottom:1px solid var(--line); position:sticky; top:0;}
+  tbody th{background:var(--panel-2); color:var(--cyan); text-align:left; border-right:1px solid var(--line); position:sticky; left:0;}
+  tbody td{border-bottom:1px solid var(--line-soft); color:var(--text-dim);}
+  tbody td.one{color:var(--green); font-weight:700;}
+  tbody tr:hover td, tbody tr:hover th{background:rgba(79,209,232,.05);}
+
+  .result-card{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; margin-top:10px;
+  }
+  .result-card .num{font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); margin-bottom:6px;}
+  .path-chain{display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-family:var(--font-mono); font-size:13px;}
+  .path-node{background:var(--panel); border:1px solid var(--line); color:var(--text); padding:5px 10px; border-radius:6px;}
+  .path-node.endpoint{border-color:var(--cyan); color:var(--cyan);}
+  .path-node.stop{border-color:var(--green); color:var(--green);}
+  .path-arrow{color:var(--text-faint);}
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono);
+    font-size:11px; letter-spacing:.05em; padding:5px 10px; border-radius:20px; margin-bottom:10px;
+  }
+  .badge.direct{background:rgba(95,217,138,.12); color:var(--green); border:1px solid rgba(95,217,138,.3);}
+  .badge.escala{background:rgba(245,167,66,.12); color:var(--amber); border:1px solid rgba(245,167,66,.3);}
+  .badge.none{background:rgba(232,99,107,.12); color:var(--red); border:1px solid rgba(232,99,107,.3);}
+  .log-line{font-family:var(--font-mono); font-size:12px; color:var(--text-dim); margin-bottom:4px;}
+
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:16px;}
+  .tab-btn{
+    background:none; border:none; color:var(--text-faint); font-family:var(--font-display);
+    font-size:13px; font-weight:600; padding:9px 14px; border-radius:8px 8px 0 0; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab-btn.active{color:var(--text); border-bottom-color:var(--amber);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  datalist{display:none;}
+
+  footer{margin-top:30px; text-align:center; color:var(--text-faint); font-family:var(--font-mono); font-size:10.5px; letter-spacing:.05em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="eyebrow">Sistema activo — control de vuelos</div>
+      <h1>Red de Rutas Aéreas</h1>
+      <p class="sub">Dos aerolíneas, una red compartida de ciudades. Busca vuelos por número exacto de escalas, gestiona ciudades y rutas, y visualiza la matriz de adyacencia.</p>
+    </div>
+    <div>
+      <div class="airline-switch">
+        <button class="airline-btn active" data-airline="avianca" onclick="setAirline('avianca')"><span class="dot"></span>Avianca</button>
+        <button class="airline-btn" data-airline="taca" onclick="setAirline('taca')"><span class="dot"></span>TACA</button>
+      </div>
+      <div class="stat-strip">
+        <div class="stat"><div class="n" id="statActivas">0</div><div class="l">Ciudades activas</div></div>
+        <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Ciudades registradas</div></div>
+        <div class="stat"><div class="n" id="statRutas">0</div><div class="l">Rutas directas</div></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="panel">
+        <h2><span class="left">Mapa de red <span class="tag" id="radarTag">activa</span></span></h2>
+        <svg id="radar" viewBox="0 0 400 400">
+          <defs>
+            <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#4e5b78"/></marker>
+            <marker id="arrow-amber" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#f5a742"/></marker>
+          </defs>
+          <circle class="radar-ring" cx="200" cy="200" r="80"/>
+          <circle class="radar-ring" cx="200" cy="200" r="130"/>
+          <circle class="radar-ring" cx="200" cy="200" r="180"/>
+          <g id="edgesLayer"></g>
+          <g id="nodesLayer"></g>
+        </svg>
+      </div>
+
+      <div class="panel">
+        <h2><span class="left">Ciudades activas <span class="tag" id="tagActivas">n=0</span></span></h2>
+        <p class="sub" style="margin-bottom:10px;">Ciudades que originan o reciben al menos un vuelo en esta aerolínea.</p>
+        <div class="active-list" id="activeList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Agregar nueva ciudad</h2>
+        <div class="field">
+          <div class="row2">
+            <input type="text" id="newCityInput" placeholder="Ej: san isidro">
+            <button class="btn-cyan" onclick="uiAddCity()">Agregar</button>
+          </div>
+        </div>
+        <div class="msg" id="cityMsg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Agregar nueva ruta</h2>
+        <div class="field">
+          <label>Origen</label>
+          <input type="text" id="routeOrigin" list="cityDatalist" placeholder="ciudad origen">
+        </div>
+        <div class="field">
+          <label>Destino</label>
+          <input type="text" id="routeDest" list="cityDatalist" placeholder="ciudad destino">
+        </div>
+        <datalist id="cityDatalist"></datalist>
+        <button class="btn-amber btn-full" onclick="uiAddRoute()">Agregar ruta</button>
+        <div class="msg" id="routeMsg"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <div class="panel">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="buscar" onclick="switchTab('buscar')">Buscar vuelo</button>
+          <button class="tab-btn" data-tab="matriz" onclick="switchTab('matriz')">Matriz de adyacencia</button>
+        </div>
+
+        <!-- TAB: buscar vuelo -->
+        <div class="tab-panel active" id="tab-buscar">
+          <div class="row3">
+            <div class="field">
+              <label>Origen</label>
+              <input type="text" id="searchOrigin" list="cityDatalist" placeholder="ciudad origen">
+            </div>
+            <div class="field">
+              <label>Destino</label>
+              <input type="text" id="searchDest" list="cityDatalist" placeholder="ciudad destino">
+            </div>
+            <div class="field">
+              <label>Escalas</label>
+              <input type="number" id="searchEscalas" min="0" value="0">
+            </div>
+          </div>
+          <p class="sub" style="margin:-4px 0 12px;">0 escalas = vuelo directo. El buscador encuentra todas las rutas con exactamente ese número de escalas, sin repetir ciudades (igual que el DFS con backtracking).</p>
+          <button class="btn-cyan" onclick="uiSearchFlight()">Buscar vuelo</button>
+          <div id="searchResults"></div>
+        </div>
+
+        <!-- TAB: matriz -->
+        <div class="tab-panel" id="tab-matriz">
+          <div class="checkbox-row">
+            <input type="checkbox" id="showAllCities" onchange="renderAdjTable()">
+            <label for="showAllCities">Mostrar todas las ciudades registradas (incluye inactivas — la matriz completa puede ser grande)</label>
+          </div>
+          <div class="matrix-wrap"><table id="adjTable"></table></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>RED COMPARTIDA DE CIUDADES · AEROLÍNEAS TACA Y AVIANCA · BÚSQUEDA DE RUTAS POR NÚMERO DE ESCALAS (DFS)</footer>
+</div>
+
+<script>
+/* ============================================================
+   DATOS BASE — misma lista de ciudades que ciudades_totales
+   ============================================================ */
+const CIUDADES_TOTALES = [
+"ciudad de mexico","cancun","flores","ciudad de guatemala","belice","san salvador",
+"san pedro de sula","roatan","la ceiba","tegucigalpa","managua","liberia",
+"san jose de costa rica","ciudad de panama","la habana","santo domingo","punta cana",
+"san juan","caracas","quito","guayaquil","piura","chiclayo","trujillo","iquitos","lima",
+"cusco","puerto maldonado","juliaca","arequipa","san andres","riohacha","santa marta",
+"barranquilla","valledupar","cartagena","monteria","cucuta","bucaramanga","barrancabermeja",
+"medellin","manizales","pereira","armenia","ibague","bogota","yopal","villavicencio","cali",
+"neiva","popayan","florencia","tumaco","pasto","leticia","madrid","barcelona","londres"
+];
+
+const RUTAS_TACA_RAW = [
+["lima","piura"],["lima","chiclayo"],["lima","trujillo"],["lima","iquitos"],["lima","cusco"],
+["lima","puerto maldonado"],["lima","juliaca"],["lima","arequipa"],
+["cusco","puerto maldonado"],["cusco","juliaca"],["cusco","arequipa"],["juliaca","arequipa"],
+["san salvador","ciudad de mexico"],["san salvador","cancun"],["san salvador","belice"],
+["san salvador","flores"],["san salvador","ciudad de guatemala"],["san salvador","san pedro de sula"],
+["san salvador","roatan"],["san salvador","la ceiba"],["san salvador","tegucigalpa"],
+["san salvador","managua"],["san salvador","liberia"],["san salvador","san jose de costa rica"],
+["san salvador","ciudad de panama"],["san salvador","la habana"],
+["ciudad de guatemala","flores"],["ciudad de guatemala","san pedro de sula"],
+["san jose de costa rica","managua"],["san jose de costa rica","ciudad de panama"],
+["san jose de costa rica","quito"],["guayaquil","san jose de costa rica"],
+// vuelta
+["piura","lima"],["chiclayo","lima"],["trujillo","lima"],["iquitos","lima"],["cusco","lima"],
+["puerto maldonado","lima"],["juliaca","lima"],["arequipa","lima"],
+["puerto maldonado","cusco"],["juliaca","cusco"],["arequipa","cusco"],["arequipa","juliaca"],
+["ciudad de mexico","san salvador"],["cancun","san salvador"],["belice","san salvador"],
+["flores","san salvador"],["ciudad de guatemala","san salvador"],["san pedro de sula","san salvador"],
+["roatan","san salvador"],["la ceiba","san salvador"],["tegucigalpa","san salvador"],
+["managua","san salvador"],["liberia","san salvador"],["san jose de costa rica","san salvador"],
+["ciudad de panama","san salvador"],["la habana","san salvador"],
+["flores","ciudad de guatemala"],["san pedro de sula","ciudad de guatemala"],
+["managua","san jose de costa rica"],["ciudad de panama","san jose de costa rica"],
+["quito","san jose de costa rica"],["guayaquil","san jose de costa rica"]
+];
+
+const RUTAS_AVIANCA_RAW = [
+["bogota","madrid"],["bogota","barcelona"],["bogota","londres"],["bogota","ciudad de mexico"],
+["bogota","cancun"],["bogota","punta cana"],["bogota","santo domingo"],["bogota","san juan"],
+["bogota","la habana"],["bogota","caracas"],["bogota","quito"],["bogota","guayaquil"],
+["bogota","lima"],["bogota","san salvador"],["bogota","san jose de costa rica"],["bogota","ciudad de panama"],
+["bogota","san andres"],["bogota","riohacha"],["bogota","santa marta"],["bogota","barranquilla"],
+["bogota","valledupar"],["bogota","cartagena"],["bogota","monteria"],["bogota","cucuta"],
+["bogota","bucaramanga"],["bogota","barrancabermeja"],["bogota","medellin"],["bogota","manizales"],
+["bogota","pereira"],["bogota","armenia"],["bogota","ibague"],["bogota","yopal"],
+["bogota","villavicencio"],["bogota","neiva"],["bogota","popayan"],["bogota","florencia"],
+["bogota","cali"],["bogota","pasto"],["bogota","tumaco"],["bogota","leticia"],
+["medellin","madrid"],["medellin","santa marta"],["medellin","barranquilla"],["medellin","cartagena"],
+["medellin","bucaramanga"],["medellin","cucuta"],["medellin","pereira"],["medellin","cali"],
+["cali","madrid"],["cali","cartagena"],["cali","pasto"],["cali","tumaco"],
+["cartagena","san andres"],["quito","guayaquil"],
+// vuelta
+["madrid","bogota"],["barcelona","bogota"],["londres","bogota"],["ciudad de mexico","bogota"],
+["cancun","bogota"],["punta cana","bogota"],["santo domingo","bogota"],["san juan","bogota"],
+["la habana","bogota"],["caracas","bogota"],["quito","bogota"],["guayaquil","bogota"],
+["lima","bogota"],["san salvador","bogota"],["san jose de costa rica","bogota"],["ciudad de panama","bogota"],
+["san andres","bogota"],["riohacha","bogota"],["santa marta","bogota"],["barranquilla","bogota"],
+["valledupar","bogota"],["cartagena","bogota"],["monteria","bogota"],["cucuta","bogota"],
+["bucaramanga","bogota"],["barrancabermeja","bogota"],["medellin","bogota"],["manizales","bogota"],
+["pereira","bogota"],["armenia","bogota"],["ibague","bogota"],["yopal","bogota"],
+["villavicencio","bogota"],["neiva","bogota"],["popayan","bogota"],["florencia","bogota"],
+["cali","bogota"],["pasto","bogota"],["tumaco","bogota"],["leticia","bogota"],
+["madrid","medellin"],["santa marta","medellin"],["barranquilla","medellin"],["cartagena","medellin"],
+["bucaramanga","medellin"],["cucuta","medellin"],["pereira","medellin"],["cali","medellin"],
+["madrid","cali"],["cartagena","cali"],["pasto","cali"],["tumaco","cali"],
+["san andres","cartagena"],["guayaquil","quito"]
+];
+
+/* ============================================================
+   ESTADO — una instancia RedRutasAereas por aerolínea
+   ============================================================ */
+function crearRed(rutas){
+  const ciudades = CIUDADES_TOTALES.slice();
+  const n = ciudades.length;
+  const matriz = Array.from({length:n}, () => new Array(n).fill(0));
+  rutas.forEach(([o,d]) => {
+    const i = ciudades.indexOf(o), j = ciudades.indexOf(d);
+    if(i>=0 && j>=0 && i!==j) matriz[i][j] = 1;
+  });
+  return { ciudades, matriz };
+}
+
+const state = {
+  taca: crearRed(RUTAS_TACA_RAW),
+  avianca: crearRed(RUTAS_AVIANCA_RAW)
+};
+let currentAirline = 'avianca';
+let activePathEdges = []; // pares [i,j] resaltados en el radar
+
+function red(){ return state[currentAirline]; }
+
+/* ============================================================
+   OPERACIONES — replican los métodos de RedRutasAereas
+   ============================================================ */
+function ciudadRegistrada(r, c){ return r.ciudades.includes(c); }
+
+function obtenerCiudadesActivas(r){
+  const activas = [];
+  for(let i=0; i<r.ciudades.length; i++){
+    const salidas = r.matriz[i].some(v => v === 1);
+    const llegadas = r.matriz.some(fila => fila[i] === 1);
+    if(salidas || llegadas) activas.push(r.ciudades[i]);
+  }
+  return activas;
+}
+
+function agregarCiudad(r, nombreRaw){
+  const nombre = nombreRaw.trim().toLowerCase();
+  if(!nombre) return {ok:false, msg:"Nombre inválido."};
+  if(ciudadRegistrada(r, nombre)) return {ok:false, msg:`La ciudad "${titleCase(nombre)}" ya está registrada.`};
+  r.ciudades.push(nombre);
+  r.matriz.forEach(fila => fila.push(0));
+  r.matriz.push(r.ciudades.map(() => 0));
+  return {ok:true, msg:`Ciudad "${titleCase(nombre)}" agregada correctamente.`};
+}
+
+function agregarRuta(r, origenRaw, destinoRaw){
+  const origen = origenRaw.trim().toLowerCase();
+  const destino = destinoRaw.trim().toLowerCase();
+  if(!ciudadRegistrada(r, origen) || !ciudadRegistrada(r, destino))
+    return {ok:false, msg:"Una o ambas ciudades no están registradas."};
+  const i = r.ciudades.indexOf(origen), j = r.ciudades.indexOf(destino);
+  if(i === j) return {ok:false, msg:"No se permite registrar vuelos de una ciudad hacia sí misma."};
+  if(r.matriz[i][j] === 1) return {ok:false, msg:`Ya existe la ruta directa ${titleCase(origen)} → ${titleCase(destino)}.`};
+  r.matriz[i][j] = 1;
+  return {ok:true, msg:`Ruta directa agregada: ${titleCase(origen)} → ${titleCase(destino)}`};
+}
+
+function hayVueloDirecto(r, origen, destino){
+  if(!ciudadRegistrada(r, origen) || !ciudadRegistrada(r, destino)) return false;
+  const i = r.ciudades.indexOf(origen), j = r.ciudades.indexOf(destino);
+  return r.matriz[i][j] === 1;
+}
+
+// DFS con backtracking — igual que buscar_rutas_con_n_escalas()
+function buscarRutasConNEscalas(r, origen, destino, nEscalas){
+  if(!ciudadRegistrada(r, origen) || !ciudadRegistrada(r, destino)) return [];
+  const longitudObjetivo = nEscalas + 1;
+  const finIdx = r.ciudades.indexOf(destino);
+  const inicioIdx = r.ciudades.indexOf(origen);
+  const rutasEncontradas = [];
+
+  function dfs(nodoActual, profundidad, rutaActual){
+    if(profundidad === longitudObjetivo){
+      if(nodoActual === finIdx) rutasEncontradas.push(rutaActual.slice());
+      return;
+    }
+    for(let vecino=0; vecino<r.ciudades.length; vecino++){
+      if(r.matriz[nodoActual][vecino] === 1){
+        const nombreVecino = r.ciudades[vecino];
+        if(!rutaActual.includes(nombreVecino)){
+          rutaActual.push(nombreVecino);
+          dfs(vecino, profundidad+1, rutaActual);
+          rutaActual.pop();
+        }
+      }
+    }
+  }
+  dfs(inicioIdx, 0, [origen]);
+  return rutasEncontradas;
+}
+
+function titleCase(s){
+  return s.split(' ').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+}
+function shortLabel(s){
+  const t = titleCase(s);
+  return t.length > 10 ? t.slice(0,9)+'…' : t;
+}
+
+/* ============================================================
+   UI — aerolínea
+   ============================================================ */
+function setAirline(name){
+  currentAirline = name;
+  document.querySelectorAll('.airline-btn').forEach(b => b.classList.toggle('active', b.dataset.airline === name));
+  activePathEdges = [];
+  document.getElementById('searchResults').innerHTML = '';
+  renderAll();
+}
+
+/* ============================================================
+   RENDER — listas, selects, datalist
+   ============================================================ */
+function renderStats(){
+  const r = red();
+  const activas = obtenerCiudadesActivas(r);
+  let rutas = 0;
+  r.matriz.forEach(fila => fila.forEach(v => rutas += v));
+  document.getElementById('statActivas').textContent = activas.length;
+  document.getElementById('statTotal').textContent = r.ciudades.length;
+  document.getElementById('statRutas').textContent = rutas;
+  document.getElementById('tagActivas').textContent = `n=${activas.length}`;
+}
+
+function renderActiveList(){
+  const r = red();
+  const activas = obtenerCiudadesActivas(r);
+  const el = document.getElementById('activeList');
+  if(activas.length === 0){
+    el.innerHTML = `<div class="empty-hint">No hay ciudades operando en esta aerolínea.</div>`;
+    return;
+  }
+  el.innerHTML = activas.map((c,i) => `<div class="city-row"><span class="idx">${i+1}</span>${titleCase(c)}</div>`).join('');
+}
+
+function renderDatalist(){
+  const r = red();
+  const dl = document.getElementById('cityDatalist');
+  dl.innerHTML = r.ciudades.map(c => `<option value="${c}">${titleCase(c)}</option>`).join('');
+}
+
+/* ============================================================
+   RENDER — matriz de adyacencia
+   ============================================================ */
+function renderAdjTable(){
+  const r = red();
+  const showAll = document.getElementById('showAllCities').checked;
+  const activas = obtenerCiudadesActivas(r);
+  const indices = showAll ? r.ciudades.map((_,i)=>i) : activas.map(c => r.ciudades.indexOf(c));
+
+  const t = document.getElementById('adjTable');
+  if(indices.length === 0){
+    t.innerHTML = `<tr><td style="padding:16px; color:var(--text-faint); font-family:var(--font-mono); font-size:12px;">No hay ciudades para mostrar.</td></tr>`;
+    return;
+  }
+  let html = '<thead><tr><th></th>' + indices.map(idx => `<th title="${titleCase(r.ciudades[idx])}">${shortLabel(r.ciudades[idx])}</th>`).join('') + '</tr></thead><tbody>';
+  indices.forEach(i => {
+    html += `<tr><th title="${titleCase(r.ciudades[i])}">${shortLabel(r.ciudades[i])}</th>`;
+    indices.forEach(j => {
+      const v = r.matriz[i][j];
+      html += `<td class="${v===1?'one':''}">${v}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+/* ============================================================
+   RENDER — radar / grafo (solo ciudades activas)
+   ============================================================ */
+function renderRadar(){
+  const r = red();
+  const activas = obtenerCiudadesActivas(r);
+  const idxActivas = activas.map(c => r.ciudades.indexOf(c));
+  document.getElementById('radarTag').textContent = `n=${activas.length}`;
+
+  const nodesLayer = document.getElementById('nodesLayer');
+  const edgesLayer = document.getElementById('edgesLayer');
+  const n = idxActivas.length;
+  const cx = 200, cy = 200, radius = 160;
+  const showLabels = n <= 22;
+
+  if(n === 0){ nodesLayer.innerHTML=''; edgesLayer.innerHTML=''; return; }
+
+  const pos = {};
+  idxActivas.forEach((idx,k) => {
+    const angle = (2*Math.PI*k/n) - Math.PI/2;
+    pos[idx] = { x: cx + radius*Math.cos(angle), y: cy + radius*Math.sin(angle) };
+  });
+
+  let edgesHtml = '';
+  idxActivas.forEach(i => {
+    idxActivas.forEach(j => {
+      if(r.matriz[i][j] === 1){
+        const active = activePathEdges.some(([a,b]) => a===i && b===j);
+        const p1 = pos[i], p2 = pos[j];
+        const mx = (p1.x+p2.x)/2 + (p2.y-p1.y)*0.06;
+        const my = (p1.y+p2.y)/2 - (p2.x-p1.x)*0.06;
+        edgesHtml += `<path class="edge ${active?'active':''}" d="M${p1.x},${p1.y} Q${mx},${my} ${p2.x},${p2.y}"/>`;
+      }
+    });
+  });
+  edgesLayer.innerHTML = edgesHtml;
+
+  let nodesHtml = '';
+  const activeNodeIdx = new Set(activePathEdges.flat());
+  idxActivas.forEach((idx,k) => {
+    const p = pos[idx];
+    const isActive = activeNodeIdx.has(idx);
+    nodesHtml += `<circle class="node-dot ${isActive?'active':'base'}" cx="${p.x}" cy="${p.y}" r="${n>35?4:6}" onclick="focusCity('${r.ciudades[idx]}')"><title>${titleCase(r.ciudades[idx])}</title></circle>`;
+    if(showLabels){
+      const angle = (2*Math.PI*k/n) - Math.PI/2;
+      const lx = cx + (radius+18)*Math.cos(angle);
+      const ly = cy + (radius+18)*Math.sin(angle) + 3;
+      nodesHtml += `<text class="node-label" x="${lx}" y="${ly}" text-anchor="middle">${shortLabel(r.ciudades[idx])}</text>`;
+    }
+  });
+  nodesLayer.innerHTML = nodesHtml;
+}
+
+function focusCity(nombre){
+  document.getElementById('searchOrigin').value = titleCase(nombre);
+  switchTab('buscar');
+}
+
+/* ============================================================
+   RENDER GENERAL
+   ============================================================ */
+function renderAll(){
+  renderStats();
+  renderActiveList();
+  renderDatalist();
+  renderAdjTable();
+  renderRadar();
+}
+
+/* ============================================================
+   ACCIONES DE UI
+   ============================================================ */
+function showMsg(id, ok, text){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg show ' + (ok ? 'ok' : 'err');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 4500);
+}
+
+function uiAddCity(){
+  const input = document.getElementById('newCityInput');
+  const res = agregarCiudad(red(), input.value);
+  showMsg('cityMsg', res.ok, res.msg);
+  if(res.ok){ input.value=''; renderAll(); }
+}
+
+function uiAddRoute(){
+  const o = document.getElementById('routeOrigin').value;
+  const d = document.getElementById('routeDest').value;
+  const res = agregarRuta(red(), o, d);
+  showMsg('routeMsg', res.ok, res.msg);
+  if(res.ok) renderAll();
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-'+tab));
+}
+
+/* ============================================================
+   BUSCAR VUELO — misma lógica que la opción 3 del menú
+   ============================================================ */
+function uiSearchFlight(){
+  const r = red();
+  const origen = document.getElementById('searchOrigin').value.trim().toLowerCase();
+  const destino = document.getElementById('searchDest').value.trim().toLowerCase();
+  const nEscalas = parseInt(document.getElementById('searchEscalas').value, 10);
+  const box = document.getElementById('searchResults');
+  activePathEdges = [];
+
+  if(!origen || !destino){
+    box.innerHTML = `<div class="badge none">● Ingresa origen y destino</div>`;
+    renderRadar();
+    return;
+  }
+  if(!ciudadRegistrada(r, origen) || !ciudadRegistrada(r, destino)){
+    box.innerHTML = `<div class="badge none">● Una o ambas ciudades no están en el mapa</div>`;
+    renderRadar();
+    return;
+  }
+  if(isNaN(nEscalas) || nEscalas < 0){
+    box.innerHTML = `<div class="badge none">● Ingresa un número de escalas válido (0, 1, 2…)</div>`;
+    renderRadar();
+    return;
+  }
+
+  let html = `<div class="log-line">Buscando rutas de <b style="color:var(--text)">${titleCase(origen)}</b> a <b style="color:var(--text)">${titleCase(destino)}</b>…</div>`;
+
+  if(nEscalas === 0){
+    if(hayVueloDirecto(r, origen, destino)){
+      html += `<div class="badge direct" style="margin-top:8px;">● VUELO DIRECTO</div>`;
+      html += `<div class="result-card"><div class="path-chain">
+        <span class="path-node endpoint">${titleCase(origen)}</span>
+        <span class="path-arrow">→</span>
+        <span class="path-node endpoint">${titleCase(destino)}</span>
+      </div></div>`;
+      activePathEdges = [[r.ciudades.indexOf(origen), r.ciudades.indexOf(destino)]];
+    } else {
+      html += `<div class="badge none" style="margin-top:8px;">● No hay vuelo directo entre ${titleCase(origen)} y ${titleCase(destino)}</div>`;
+    }
+  } else {
+    const rutas = buscarRutasConNEscalas(r, origen, destino, nEscalas);
+    if(rutas.length > 0){
+      html += `<div class="badge escala" style="margin-top:8px;">● ${rutas.length} RUTA${rutas.length>1?'S':''} CON ${nEscalas} ESCALA${nEscalas>1?'S':''}</div>`;
+      rutas.forEach((ruta,i) => {
+        const chain = ruta.map((c,k) => {
+          const cls = (k===0 || k===ruta.length-1) ? 'endpoint' : 'stop';
+          return (k>0?'<span class="path-arrow">→</span>':'') + `<span class="path-node ${cls}">${titleCase(c)}</span>`;
+        }).join('');
+        html += `<div class="result-card"><div class="num">RUTA ${i+1}</div><div class="path-chain">${chain}</div></div>`;
+      });
+      // resaltar la primera ruta encontrada en el radar
+      const primera = rutas[0];
+      activePathEdges = [];
+      for(let k=0;k<primera.length-1;k++){
+        activePathEdges.push([r.ciudades.indexOf(primera[k]), r.ciudades.indexOf(primera[k+1])]);
+      }
+    } else {
+      html += `<div class="badge none" style="margin-top:8px;">● No se encontraron rutas con exactamente ${nEscalas} escala${nEscalas>1?'s':''} entre ${titleCase(origen)} y ${titleCase(destino)}</div>`;
+    }
+  }
+
+  box.innerHTML = html;
+  renderRadar();
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderAll();
+</script>
+</body>
+</html>
