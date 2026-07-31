@@ -66,3 +66,7 @@ Este proyecto corresponde al **Trabajo 04: Análisis de rutas aéreas mediante r
 ## 📄 Licencia
 
 Proyecto de uso académico. Libre de usar y modificar con fines educativos.
+
+## ✍️ Autor
+
+**Ivan Leonardo Carrillo Alor**
